@@ -1,7 +1,7 @@
 import numpy as np
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from src.model import model_nai
-from src.fitter.velres import get_velres
+from src.model.velres import get_velres
 from typing import Optional
 import os
 import astropy.units as u
