@@ -4,7 +4,7 @@ import os
 
 def get_velres(redshift, modwave):
     c = 2.998e5
-    fitlim = (modwave.min(), modwave.max())
+    fitlim = (np.min(modwave), np.max(modwave))
     src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     configdir = os.path.join(src_dir, 'config')
     LSF_file = os.path.join(configdir, 'LSF-Config_MUSE_WFM')
