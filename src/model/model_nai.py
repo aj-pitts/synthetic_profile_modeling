@@ -5,7 +5,7 @@ from linetools.spectra import convolve as lsc
 from astropy import units as u
 import os
 
-from src.fitter.velres import get_velres
+from src.model.velres import get_velres
 
 # Set up constants for NaI
 # From Cashman+17
