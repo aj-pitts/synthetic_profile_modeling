@@ -4,6 +4,8 @@ from src.io.file_handler import write_output
 
 import numpy as np
 
+from tqdm import tqdm
+
 def fit_spectra(script_id: int, spectra: dict[int, dict[str, object]]) -> None:
     lamred = 5897.5581
     logN = 14.5
@@ -14,8 +16,8 @@ def fit_spectra(script_id: int, spectra: dict[int, dict[str, object]]) -> None:
     c = 2.998e5
     
     results = {}
-    for i, (specnum, subdict) in enumerate(spectra.items()):
-        print(f'\rScript{script_id}: Fitting Spec {i+1}/{len(spectra)}', end='', flush=True)
+    for i, (specnum, subdict) in enumerate(tqdm(spectra.items(), desc=f"Script {script_id}", position=script_id, leave=True)):
+        # print(f'\rScript{script_id}: Fitting Spec {i+1}/{len(spectra)}', end='', flush=True)
         xspec = subdict['spec']
         params = subdict['params']
 
