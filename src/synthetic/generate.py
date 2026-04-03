@@ -16,8 +16,8 @@ def generate_synthetic(
     root = defaults.get_root_path()
     config_dir = os.path.join(root, 'src/config')
     fullpath = os.path.join(config_dir, 'wave.npy')
-    with fits.open(fullpath) as hdul:
-        wavelength = hdul['wave'].data
+    wavelength = np.load(fullpath)
+    
     w = (wavelength >= 5870) & (wavelength <= 5920)
     wave = wavelength[w]
 
