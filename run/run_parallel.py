@@ -26,7 +26,8 @@ if __name__ == "__main__":
     if os.path.exists(datapath):
         os.remove(datapath)
 
-    warnings.filterwarnings("error", message="function 'max' is not known to astropy's Quantity")
+    warnings.filterwarnings("ignore", message="function 'max' is not known to astropy's Quantity")
+    warnings.filterwarnings("ignore", message="Assuming wavelength unit is Angstroms")
     
     with Pool(processes=n_realizations) as pool:
         pool.map(run_fitter, range(n_realizations))
