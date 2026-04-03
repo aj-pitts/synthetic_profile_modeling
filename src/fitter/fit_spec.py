@@ -27,14 +27,15 @@ def fit_spectra(script_id: int, spectra: dict[int, dict[str, object]]) -> None:
         lamred_mcmc, logN_mcmc, bD_mcmc, Cf_mcmc = datfit.theta_percentiles
         lamrest = 5897.5581
         lamerr = np.mean(lamred_mcmc[1:])
+        logn_err = np.mean(logN_mcmc[1:])
+        bd_err = np.mean(bD_mcmc[1:])
+        cf_err = np.mean(Cf_mcmc[1:])
 
         velocity = ((lamred_mcmc[0] / lamrest) - 1) * c
         verr = lamerr * c / lamrest
         theta = np.array([param[0] for param in datfit.theta_percentiles])
         lamred, logn, bd, cf = theta
 
-        theta_error = np.array(np.mean(param[1:]) for param in datfit.theta_percentiles)
-        lamred_err, logn_err, bd_err, cf_err = theta_error
 
         samples = datfit.samples
         lambda_samples = samples[:,1000:,0].flatten()
@@ -43,7 +44,7 @@ def fit_spectra(script_id: int, spectra: dict[int, dict[str, object]]) -> None:
         percentiles = datfit.theta_percentiles
 
         result = {'ew':ew, 'v':velocity, 'verr':verr, 'p':p, 
-                  'lambda':lamred, 'lambdaerr':lamred_err, 'logn':logn, 'lognerr':logn_err,
+                  'lambda':lamred, 'lambdaerr':lamerr, 'logn':logn, 'lognerr':logn_err,
                   'bd':bd, 'bderr':bd_err, 'cf':cf, 'cferr':cf_err}
 
         results[specnum] = result #{"result":result, "params":params}
