@@ -15,7 +15,7 @@ def fit_spectra(script_id: int, spectra: dict[int, dict[str, object]]) -> None:
     
     results = {}
     for i, (specnum, subdict) in enumerate(spectra.items()):
-        print(f'\rFitting Spec {i+1}/{len(spectra)}', end='', flush=True)
+        print(f'\rScript{script_id}: Fitting Spec {i+1}/{len(spectra)}', end='', flush=True)
         xspec = subdict['spec']
         params = subdict['params']
 
