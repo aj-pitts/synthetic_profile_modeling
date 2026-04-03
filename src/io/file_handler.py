@@ -10,6 +10,8 @@ def write_output(
         ) -> None:
     root = get_root_path()
     data_dir = os.path.join(root, 'output/data')
+    os.makedirs(data_dir, exist_ok=True)
+    
     filename = 'data.h5'
     filepath = os.path.join(data_dir, filename)
 
