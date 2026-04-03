@@ -11,7 +11,7 @@ def write_output(
     root = get_root_path()
     data_dir = os.path.join(root, 'output/data')
     os.makedirs(data_dir, exist_ok=True)
-    
+
     filename = 'data.h5'
     filepath = os.path.join(data_dir, filename)
 
@@ -30,11 +30,11 @@ def write_output(
                 subgroup.create_dataset('err', data=err)
 
                 params_group = subgroup.create_group("parameters")
-                for key, param in fixed_parameters:
+                for key, param in fixed_parameters.items():
                     params_group.create_dataset(key, data=param)
                 
                 measurement_group = subgroup.create_group("measurements")
-                for key, val in measurements:
+                for key, val in measurements.items():
                     measurement_group.create_dataset(key, data=val)
 
         finally:
