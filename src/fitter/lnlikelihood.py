@@ -1,7 +1,5 @@
 # Define likelihood and priors
 import numpy as np
-import scipy.special as sp
-import math
 from src.model import model_nai
 
 # Define the probability function as likelihood * prior.
@@ -62,7 +60,7 @@ def lnlike(theta, wave, flux, err, velres):
     #model = m * x + b
     #inv_sigma2 = 1.0/(yerr**2 + model**2*np.exp(2*lnf))
     # return -0.5*(np.sum((y-model)**2*inv_sigma2 - np.log(inv_sigma2)))
-    return -0.5*(np.sum((flux-flx_model)**2*inv_sigma2 - np.log(2.0*math.pi*inv_sigma2)))
+    return -0.5*(np.sum((flux-flx_model)**2*inv_sigma2 - np.log(2.0*np.pi*inv_sigma2)))
 
 
 
@@ -79,7 +77,7 @@ def lnprob(theta, wave, flux, err, velres):
 #    model = m * x + b
 #    inv_sigma2 = 1.0/(yerr**2 + model**2*np.exp(2*lnf))
 #    term1 = (y-model)**2*inv_sigma2
-#    term2 = np.log(2.0*math.pi*inv_sigma2)
+#    term2 = np.log(2.0*np.pi*inv_sigma2)
 #    return term1-term2
 
 # More debugging
@@ -88,5 +86,5 @@ def lnprob(theta, wave, flux, err, velres):
 #    model = m * x + b
 #    inv_sigma2 = 1.0/(yerr**2 + model**2*np.exp(2*lnf))
 #    term1 = (y-model)**2*inv_sigma2
-#    term2 = np.log(2.0*math.pi*inv_sigma2)
+#    term2 = np.log(2.0*np.pi*inv_sigma2)
 #    return (y-model)**2

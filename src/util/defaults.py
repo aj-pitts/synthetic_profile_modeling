@@ -10,3 +10,6 @@ def count_nspec() -> int:
     for key, tup in spectra_setup.items():
         count *= len(np.arange(*tup))
     return count
+
+def structure_results():
+    return

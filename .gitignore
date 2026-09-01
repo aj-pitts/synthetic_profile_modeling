@@ -3,3 +3,7 @@ __pycache__
 *.pkl
 *.pdf
 results/
+*.npy
+*.h5
+*.fits
+data/

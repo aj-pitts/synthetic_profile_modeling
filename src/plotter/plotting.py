@@ -11,7 +11,9 @@ from matplotlib.colors import to_rgba
 from src.model.model_nai import model_NaI
 from src.model.velres import get_velres
 from src.util.defaults import get_root_path
+from src.io.file_handler import structured_output
 from src.config.measurement_config import MEASUREMENT_CONFIG
+from src.config.spectra_setup import spectra_setup
 
 from typing import Optional
 
@@ -129,205 +131,370 @@ def plot_grids(
         fig.savefig(os.path.join(results_directory, f"plots_{fig_num}.pdf"), bbox_inches='tight')
         count += plots_per_fig
 
-def plot_results(results: dict[int, dict[str, object]]) -> None:
-    path = os.path.dirname(os.path.abspath(__file__))
-    plt.style.use(os.path.join(path, 'figures.mplstyle'))
 
-    nrow = 1
-    ncol = 2
-    base_w, base_h = plt.rcParams['figure.figsize']
-    fig = plt.figure(figsize=(base_w * ncol, base_h * nrow))
-    gs = GridSpec(nrow, ncol, figure=fig)
+# def plot_results(results: dict[int, dict[str, object]]) -> None:
+#     path = os.path.dirname(os.path.abspath(__file__))
+#     plt.style.use(os.path.join(path, 'figures.mplstyle'))
 
-    ax_left = fig.add_subplot(gs[0,0])
-    ax_right = fig.add_subplot(gs[0,1])
+#     nrow = 1
+#     ncol = 2
+#     base_w, base_h = plt.rcParams['figure.figsize']
+#     fig = plt.figure(figsize=(base_w * ncol, base_h * nrow))
+#     gs = GridSpec(nrow, ncol, figure=fig)
 
-    snrs = []
-    dvs = []
-    verrs = []
-    ps = []
+#     ax_left = fig.add_subplot(gs[0,0])
+#     ax_right = fig.add_subplot(gs[0,1])
 
-    for specnum, subdict in results.items():
-        params = subdict['params']
-        snr, vcen, logn, bd, cf = params
+#     snrs = []
+#     dvs = []
+#     verrs = []
+#     ps = []
 
-        res = subdict['result']
-        vfit = res['v']
-        verr = res['verr']
-        p = res['p']
-        ew = res['ew']
+#     for specnum, subdict in results.items():
+#         params = subdict['params']
+#         snr, vcen, logn, bd, cf = params
 
-        snrs.append(snr)
-        dvs.append((abs(vcen - vfit)))
-        verrs.append(verr)
-        ps.append(p)
+#         res = subdict['result']
+#         vfit = res['v']
+#         verr = res['verr']
+#         p = res['p']
+#         ew = res['ew']
+
+#         snrs.append(snr)
+#         dvs.append((abs(vcen - vfit)))
+#         verrs.append(verr)
+#         ps.append(p)
     
-    snrs = np.array(snrs)
-    dvs = np.array(dvs)
-    verrs = np.array(verrs)
-    ps = np.array(ps)
+#     snrs = np.array(snrs)
+#     dvs = np.array(dvs)
+#     verrs = np.array(verrs)
+#     ps = np.array(ps)
 
-    mean_verrs = []
-    std_verrs = []
+#     mean_verrs = []
+#     std_verrs = []
 
-    mean_dvs = []
-    std_dvs = []
+#     mean_dvs = []
+#     std_dvs = []
 
-    unique_snr = np.unique(snrs)
-    for sn in unique_snr:
-        w = snrs == sn
-        mean_verrs.append(np.mean(verrs[w]))
-        std_verrs.append(np.std(verrs[w]))
+#     unique_snr = np.unique(snrs)
+#     for sn in unique_snr:
+#         w = snrs == sn
+#         mean_verrs.append(np.mean(verrs[w]))
+#         std_verrs.append(np.std(verrs[w]))
 
-        mean_dvs.append(np.mean(dvs[w]))
-        std_dvs.append(np.std(dvs[w]))
+#         mean_dvs.append(np.mean(dvs[w]))
+#         std_dvs.append(np.std(dvs[w]))
 
-    ax_left.errorbar(unique_snr, mean_verrs, yerr=std_verrs, fmt='o', linestyle='none')
-    ax_left.set_ylabel(r'$\sigma_{v_{\mathrm{cen}}}\ \left( \mathrm{km\ s^{1}} \right)$')
-    ax_left.set_xlabel(r'$S/N$')
+#     ax_left.errorbar(unique_snr, mean_verrs, yerr=std_verrs, fmt='o', linestyle='none')
+#     ax_left.set_ylabel(r'$\sigma_{v_{\mathrm{cen}}}\ \left( \mathrm{km\ s^{1}} \right)$')
+#     ax_left.set_xlabel(r'$S/N$')
 
-    ax_right.errorbar(unique_snr, mean_dvs, yerr=std_dvs, fmt='o', linestyle='none')
-    ax_right.set_ylabel(r'$\Delta v\ \left( \mathrm{km\ s^{1}} \right)$')
-    ax_right.set_xlabel(r'$S/N$')
+#     ax_right.errorbar(unique_snr, mean_dvs, yerr=std_dvs, fmt='o', linestyle='none')
+#     ax_right.set_ylabel(r'$\Delta v\ \left( \mathrm{km\ s^{1}} \right)$')
+#     ax_right.set_xlabel(r'$S/N$')
 
-    rootdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    resdir = os.path.join(rootdir, 'results')
-    fname = os.path.join(resdir, 'results.pdf')
+#     rootdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+#     resdir = os.path.join(rootdir, 'results')
+#     fname = os.path.join(resdir, 'results.pdf')
 
-    fig.savefig(fname, bbox_inches='tight')
+#     fig.savefig(fname, bbox_inches='tight')
 
-def plot_results_2(results: dict[int, dict[str, object]]) -> None:
+def plot_results(results: dict, show: bool = False, save: bool = True) -> None:
     def random_v() -> float:
-        return np.sign(np.random.choice([-1, 1])) * (np.random.rand()+np.random.rand())
-
+        return np.random.choice([-1, 1]) * (np.random.rand()+np.random.rand())
     path = os.path.dirname(os.path.abspath(__file__))
     plt.style.use(os.path.join(path, 'figures.mplstyle'))
-    rootdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    resdir = os.path.join(rootdir, 'results')
+    # results = structured_output()
 
-    dtype = [
-        ('snr', float),
-        ('vfit', float),
-        ('verr', float),
-        ('p', float),
-        ('ew', float),
-        ('vcen', float),
-        ('logn', float),
-        ('bd', float),
-        ('cf', float),
-    ]
-    data = np.zeros(len(results), dtype=dtype)
+    snrs = np.arange(*spectra_setup['snr'])
+    nplots = len(snrs)
+    ncols = 3
+    nrows = int(np.ceil(nplots/ncols))
 
-    for i, (specnum, subdict) in enumerate(results.items()):
-        params = subdict['params']
-        snr, vcen, logn, bd, cf = params
-        res = subdict['result']
+    base_w, base_h = plt.rcParams['figure.figsize']
+    fig = plt.figure(figsize=(base_w * ncols * 2, base_h * nrows * 1.75))
+    gs_main = GridSpec(nrows, ncols, figure=fig, hspace=.1, wspace=.15)
 
-        data[i] = (snr, res['v'], res['verr'], res['p'], res['ew'], vcen, logn, bd, cf)
+    ax_group = fig.add_subplot(gs_main[:,:])
+    ax_group.set_xlabel(r"$v_{\mathrm{synth}}\ \left( \mathrm{km\ s^{-1}} \right)$", labelpad=35)
+    ax_group.set_frame_on(False)
+    ax_group.patch.set_alpha(0)
+    ax_group.set_zorder(-1)
+    ax_group.set_xticks([])
+    ax_group.set_yticks([])
+    for spine in ax_group.spines.values():
+        spine.set_visible(False)
 
 
-    unique_logn = np.unique(data['logn'])
-    unique_bd = np.unique(data['bd'])
-    unique_cf = np.unique(data['cf'])
+    unique_logn = np.unique(results['logn_fix'])
+    unique_bd = np.unique(results['bd_fix'])
+    unique_cf = np.unique(results['cf_fix'])
 
     hex = ['#e41a1c', "#004cff", '#ff7f00', "#00ce03", '#984ea3', '#a65628', '#f781bf']
     colors = hex[:len(unique_bd)]#cm.Set1(np.linspace(0, 1, len(unique_bd)))
     markers = ['o', '^', 'D', 'v', 'P', '*'][:len(unique_logn)]
-    markersizes = np.linspace(5, 30, len(unique_cf))
+    markersizes = np.linspace(1, 4, len(unique_cf))
 
     bd_map   = {v: c for v, c in zip(unique_bd, colors)}
     logn_map = {v: m for v, m in zip(unique_logn, markers)}
     cf_map   = {v: s for v, s in zip(unique_cf, markersizes)}
 
-    for sn in np.unique(data['snr']):
-        config = MEASUREMENT_CONFIG["SQUARE0.6"]
-        for snlims, ewlim in config.items():
-            if sn <= snlims[1] and sn > snlims[0]:
-                ewlimit = ewlim
-                break
-        nrow = 3
-        ncol = 1
-        base_w, base_h = plt.rcParams['figure.figsize']
-        fig = plt.figure(figsize=(base_w * ncol * 1.33, base_h * nrow * .5))
-        gs = GridSpec(nrow, ncol, figure=fig, hspace=0)
+    for i, snr in enumerate(snrs):
+        nrow = i // ncols
+        ncol = i % ncols
 
+        gs = gs_main[nrow, ncol].subgridspec(3,1, hspace=0)
         ax_top = fig.add_subplot(gs[0,0])
         ax_mid = fig.add_subplot(gs[1,0])
         ax_bott = fig.add_subplot(gs[2,0])
 
-        ax_top.set_title(rf"$S/N = {int(sn)}$")
-        ax_top.set_ylabel(r'$P$')
-        ax_top.set_xticklabels([])
+        # w = results['snr'] == snr
+        w = (results['snr'] == snr) & (results['logn_fix'] != 12)
+        rows = results[w]
 
-        ax_mid.set_ylabel(r"$\sigma_{v_{\mathrm{cen}}}\ \left( \mathrm{km\ s^{1}} \right)$")
-        ax_mid.set_yscale('log')
+        ax_top.text(0.95, 0.1, rf"$S/N = {snr}$" + " " + r"$\mathrm{pix^{-1}}$", transform=ax_top.transAxes,
+                    ha='right', va='bottom')
+        
+        for row in rows:
+            rgba = to_rgba(bd_map[row['bd_fix']])
+            marker = logn_map[row['logn_fix']]
+            c = (*rgba[:3], 0.5)
+            ec = (*rgba[:3], 1.0)
+            s = cf_map[row['cf_fix']]
+
+            # style = dict(
+            #     fmt = marker,
+            #     markersize=s,
+            #     markerfacecolor=c,
+            #     markeredgecolor=ec,
+
+            #     linestyle='none',
+            #     elinewidth=1,
+            #     capsize=2
+            # )
+
+            # ax_top.errorbar(row['vcen']+random_v(), row['p'],
+            #                 yerr=[[np.abs(row['p'] - row['p_min'])], [np.abs(row['p_max'] - row['p'])]],
+            #                 **style)
+            
+            # ax_mid.errorbar(row['vcen']+random_v(), row['ew'],
+            #                 yerr=[[np.abs(row['ew'] - row['ew_min'])], [np.abs(row['ew_max'] - row['ew'])]],
+            #                 **style)
+            
+            # ax_bott.errorbar(row['vcen']+random_v(), row['v_err'],
+            #                 yerr=[[np.abs(row['v_err'] - row['v_err_min'])], [np.abs(row['v_err_max'] - row['v_err'])]],
+            #                 **style)
+
+            style = dict(
+                marker=marker,
+                s=s**2,
+                color=c,
+                edgecolors=ec
+            )
+            ax_top.scatter(row['vcen']+random_v(), row['p'], **style)    
+            ax_mid.scatter(row['vcen']+random_v(), row['ew'], **style)
+            ax_bott.scatter(row['vcen']+random_v(), row['v_err'], **style)
+            
+        ax_top.hlines([0.95], -10, 110, colors='k', linestyles='--', linewidths=1)
+        ax_top.set_xlim(-10, 110)
+        ax_mid.set_xlim(-10, 110)
+        ax_bott.set_xlim(-10, 110)
+
+        ax_top.set_xticklabels([])
         ax_mid.set_xticklabels([])
 
-        ax_bott.set_ylabel(r"$\mathrm{EW}\ \left( \mathrm{\AA} \right)$")
-        ax_bott.set_xlabel(r"$v_{\mathrm{synth}}\ \left( \mathrm{km\ s^{1}} \right)$")
+        # if nrow == nrows - 1:
+        #     ax_bott.set_xlabel(r"$v_{\mathrm{synth}}\ \left( \mathrm{km\ s^{-1}} \right)$")
+        
+        if ncol == 0:
+            ax_top.set_ylabel(r'$P$')
+            ax_mid.set_ylabel(r"$\mathrm{EW}\ \left( \mathrm{\AA} \right)$")
+            ax_bott.set_ylabel(r"$\sigma_{v_{\mathrm{cen}}}\ \left( \mathrm{km\ s^{-1}} \right)$")
 
 
-        w = sn == data['snr']
-        rows = data[w]
+    gs_end = gs_main[2,2].subgridspec(3,1)
+    dummy_axes: list[Axes] = []
+    for i in range(3):
+        dummy_ax = fig.add_subplot(gs_end[i,0])
 
-        for row in rows:
+        dummy_ax.set_frame_on(False)
+        dummy_ax.patch.set_alpha(0)
+        dummy_ax.set_xticks([])
+        dummy_ax.set_yticks([])
+        for spine in dummy_ax.spines.values():
+            spine.set_visible(False)
 
-            rgba = to_rgba(bd_map[row['bd']])
-            dimgray = (0.412, 0.412, 0.412, 1.0)
+        dummy_axes.append(dummy_ax)
 
-            color = rgba if row['ew'] >= ewlimit else dimgray
+    bd_handles = [
+    Line2D([0], [0], marker='o', color='w', markerfacecolor=bd_map[v],
+        markersize=8, label=rf'$b_D = {v}\ \left( \mathrm{{km\ s^{{-1}}}} \right)$')
+    for v in unique_bd
+    ]
 
-            ax_top.scatter(
-                row['vcen']+random_v(), row['p'],
-                s=cf_map[row['cf']],
-                marker=logn_map[row['logn']],
-                facecolors=(*color[:3], 0.5),
-                edgecolors=(*color[:3], 1)
-            )
+    logn_handles = [
+        Line2D([0], [0], marker=logn_map[v], color='k', linestyle='none',
+            markersize=8, label=rf'$\mathrm{{log}}\, N = {v:.1f}\ \left( \mathrm{{cm}}^{{-2}} \right)$')
+        for v in unique_logn
+    ]
 
-            ax_mid.scatter(
-                row['vcen']+random_v(), row['verr'],
-                s=cf_map[row['cf']],
-                marker=logn_map[row['logn']],
-                facecolors=(*color[:3], 0.5),
-                edgecolors=(*color[:3], 1)
-            )
+    cf_handles = [
+        Line2D([0], [0], marker='o', color='k', linestyle='none',
+            markersize=np.sqrt(cf_map[v]), label=rf'$C_f$ = {v:.1f}')
+        for v in unique_cf
+    ]
 
-            ax_bott.scatter(
-                row['vcen']+random_v(), row['ew'],
-                s=cf_map[row['cf']],
-                marker=logn_map[row['logn']],
-                facecolors=(*color[:3], 0.5),
-                edgecolors=(*color[:3], 1)
-            )
+    leg1 = dummy_axes[0].legend(handles=bd_handles, bbox_to_anchor=(.1, .5), loc='upper left', frameon=False)
+    leg2 = dummy_axes[1].legend(handles=logn_handles, bbox_to_anchor=(.1, .6), loc='upper left', frameon=False)
+    leg3 = dummy_axes[2].legend(handles=cf_handles, bbox_to_anchor=(.1, .85), loc='upper left', frameon=False)
 
-        bd_handles = [
-        Line2D([0], [0], marker='o', color='w', markerfacecolor=bd_map[v],
-            markersize=8, label=rf'$b_D = {v}\ \left( \mathrm{{km\ s^{{-1}}}} \right)$')
-        for v in unique_bd
-        ]
+    if save:
+        rootdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        resdir = os.path.join(rootdir, 'output/figures')
+        fname = 'synthetic_results.pdf'
+        fig.savefig(os.path.join(resdir, fname), bbox_inches='tight')
 
-        logn_handles = [
-            Line2D([0], [0], marker=logn_map[v], color='k', linestyle='none',
-                markersize=8, label=rf'$\mathrm{{log}}\, N = {v:.1f}\, (\mathrm{{cm}}^{{-2}})$')
-            for v in unique_logn
-        ]
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
-        cf_handles = [
-            Line2D([0], [0], marker='o', color='k', linestyle='none',
-                markersize=np.sqrt(cf_map[v]), label=rf'$C_f$ = {v:.1f}')
-            for v in unique_cf
-        ]
-
-        # Add each group with a title
-        leg1 = ax_top.legend(handles=bd_handles, bbox_to_anchor=(1.00, .5), loc='upper left', frameon=False)
-        leg2 = ax_mid.legend(handles=logn_handles, bbox_to_anchor=(1.00, .5), loc='upper left', frameon=False)
-        leg3 = ax_bott.legend(handles=cf_handles, bbox_to_anchor=(1.00, .5), loc='upper left', frameon=False)
-
-        # ax_bott.add_artist(leg1)
-        # ax_bott.add_artist(leg2)
-
-        fname = os.path.join(resdir, f'results_sn{int(sn)}.pdf')
-        fig.savefig(fname, bbox_inches='tight')
+    # path = os.path.dirname(os.path.abspath(__file__))
+    # plt.style.use(os.path.join(path, 'figures.mplstyle'))
+    # rootdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    # resdir = os.path.join(rootdir, 'results')
 
 
+# def plot_results_2(results: dict[int, dict[str, object]]) -> None:
+#     def random_v() -> float:
+#         return np.sign(np.random.choice([-1, 1])) * (np.random.rand()+np.random.rand())
+
+#     path = os.path.dirname(os.path.abspath(__file__))
+#     plt.style.use(os.path.join(path, 'figures.mplstyle'))
+#     rootdir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+#     resdir = os.path.join(rootdir, 'results')
+
+#     dtype = [
+#         ('snr', float),
+#         ('vfit', float),
+#         ('verr', float),
+#         ('p', float),
+#         ('ew', float),
+#         ('vcen', float),
+#         ('logn', float),
+#         ('bd', float),
+#         ('cf', float),
+#     ]
+#     data = np.zeros(len(results), dtype=dtype)
+
+#     for i, (specnum, subdict) in enumerate(results.items()):
+#         params = subdict['params']
+#         snr, vcen, logn, bd, cf = params
+#         res = subdict['result']
+
+#         data[i] = (snr, res['v'], res['verr'], res['p'], res['ew'], vcen, logn, bd, cf)
+
+
+#     unique_logn = np.unique(data['logn'])
+#     unique_bd = np.unique(data['bd'])
+#     unique_cf = np.unique(data['cf'])
+
+#     hex = ['#e41a1c', "#004cff", '#ff7f00', "#00ce03", '#984ea3', '#a65628', '#f781bf']
+#     colors = hex[:len(unique_bd)]#cm.Set1(np.linspace(0, 1, len(unique_bd)))
+#     markers = ['o', '^', 'D', 'v', 'P', '*'][:len(unique_logn)]
+#     markersizes = np.linspace(5, 30, len(unique_cf))
+
+#     bd_map   = {v: c for v, c in zip(unique_bd, colors)}
+#     logn_map = {v: m for v, m in zip(unique_logn, markers)}
+#     cf_map   = {v: s for v, s in zip(unique_cf, markersizes)}
+
+#     for sn in np.unique(data['snr']):
+#         config = MEASUREMENT_CONFIG["SQUARE0.6"]
+#         for snlims, ewlim in config.items():
+#             if sn <= snlims[1] and sn > snlims[0]:
+#                 ewlimit = ewlim
+#                 break
+#         nrow = 3
+#         ncol = 1
+#         base_w, base_h = plt.rcParams['figure.figsize']
+#         fig = plt.figure(figsize=(base_w * ncol * 1.33, base_h * nrow * .5))
+#         gs = GridSpec(nrow, ncol, figure=fig, hspace=0)
+
+#         ax_top = fig.add_subplot(gs[0,0])
+#         ax_mid = fig.add_subplot(gs[1,0])
+#         ax_bott = fig.add_subplot(gs[2,0])
+
+#         ax_top.set_title(rf"$S/N = {int(sn)}$")
+#         ax_top.set_ylabel(r'$P$')
+#         ax_top.set_xticklabels([])
+
+#         ax_mid.set_ylabel(r"$\sigma_{v_{\mathrm{cen}}}\ \left( \mathrm{km\ s^{1}} \right)$")
+#         ax_mid.set_yscale('log')
+#         ax_mid.set_xticklabels([])
+
+#         ax_bott.set_ylabel(r"$\mathrm{EW}\ \left( \mathrm{\AA} \right)$")
+#         ax_bott.set_xlabel(r"$v_{\mathrm{synth}}\ \left( \mathrm{km\ s^{1}} \right)$")
+
+
+#         w = sn == data['snr']
+#         rows = data[w]
+
+#         for row in rows:
+
+#             rgba = to_rgba(bd_map[row['bd']])
+#             dimgray = (0.412, 0.412, 0.412, 1.0)
+
+#             color = rgba if row['ew'] >= ewlimit else dimgray
+
+#             ax_top.scatter(
+#                 row['vcen']+random_v(), row['p'],
+#                 s=cf_map[row['cf']],
+#                 marker=logn_map[row['logn']],
+#                 facecolors=(*color[:3], 0.5),
+#                 edgecolors=(*color[:3], 1)
+#             )
+
+#             ax_mid.scatter(
+#                 row['vcen']+random_v(), row['verr'],
+#                 s=cf_map[row['cf']],
+#                 marker=logn_map[row['logn']],
+#                 facecolors=(*color[:3], 0.5),
+#                 edgecolors=(*color[:3], 1)
+#             )
+
+#             ax_bott.scatter(
+#                 row['vcen']+random_v(), row['ew'],
+#                 s=cf_map[row['cf']],
+#                 marker=logn_map[row['logn']],
+#                 facecolors=(*color[:3], 0.5),
+#                 edgecolors=(*color[:3], 1)
+#             )
+
+#         bd_handles = [
+#         Line2D([0], [0], marker='o', color='w', markerfacecolor=bd_map[v],
+#             markersize=8, label=rf'$b_D = {v}\ \left( \mathrm{{km\ s^{{-1}}}} \right)$')
+#         for v in unique_bd
+#         ]
+
+#         logn_handles = [
+#             Line2D([0], [0], marker=logn_map[v], color='k', linestyle='none',
+#                 markersize=8, label=rf'$\mathrm{{log}}\, N = {v:.1f}\, (\mathrm{{cm}}^{{-2}})$')
+#             for v in unique_logn
+#         ]
+
+#         cf_handles = [
+#             Line2D([0], [0], marker='o', color='k', linestyle='none',
+#                 markersize=np.sqrt(cf_map[v]), label=rf'$C_f$ = {v:.1f}')
+#             for v in unique_cf
+#         ]
+
+#         # Add each group with a title
+#         leg1 = ax_top.legend(handles=bd_handles, bbox_to_anchor=(1.00, .5), loc='upper left', frameon=False)
+#         leg2 = ax_mid.legend(handles=logn_handles, bbox_to_anchor=(1.00, .5), loc='upper left', frameon=False)
+#         leg3 = ax_bott.legend(handles=cf_handles, bbox_to_anchor=(1.00, .5), loc='upper left', frameon=False)
+
+#         # ax_bott.add_artist(leg1)
+#         # ax_bott.add_artist(leg2)
+
+#         fname = os.path.join(resdir, f'results_sn{int(sn)}.pdf')
+#         fig.savefig(fname, bbox_inches='tight')
