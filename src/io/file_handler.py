@@ -6,6 +6,49 @@ import os
 from astropy.table import Table, Column
 from glob import glob
 
+# def write_output(
+#         spec_id: int, script_id: int, wave: np.ndarray, flux: np.ndarray, err: np.ndarray,
+#         fixed_parameters: dict[str, float], measurements: dict[str, float]
+#         ) -> None:
+#     root = get_root_path()
+#     data_dir = os.path.join(root, 'output/data')
+#     os.makedirs(data_dir, exist_ok=True)
+    
+#     filename = 'data.h5'
+
+#     filepath = os.path.join(data_dir, filename)
+
+#     lockfile = filepath + ".lock"
+
+#     with open(lockfile, 'w') as lf:
+#         fcntl.fcntl(lf, fcntl.LOCK_EX)
+
+#         try:
+#             with h5py.File(filepath, 'a') as f:
+#                 group = f.require_group(str(script_id))
+#                 #subgroup = group.create_group(str(script_id))
+#                 group.create_dataset('spec_id', data = spec_id)
+
+#                 group.create_dataset('wave', data=wave)
+#                 group.create_dataset('flux', data=flux)
+#                 group.create_dataset('err', data=err)
+#                 # subgroup.create_dataset('wave', data=wave)
+#                 # subgroup.create_dataset('flux', data=flux)
+#                 # subgroup.create_dataset('err', data=err)
+#                 for key, param in fixed_parameters.items():
+#                     group.create_dataset(key, data=param)
+#                 # params_group = subgroup.create_group("parameters")
+#                 # for key, param in fixed_parameters.items():
+#                 #     params_group.create_dataset(key, data=param)
+#                 for key, val in measurements.items():
+#                     group.create_dataset(key, data=val)
+#                 # measurement_group = subgroup.create_group("measurements")
+#                 # for key, val in measurements.items():
+#                 #     measurement_group.create_dataset(key, data=val)
+
+#         finally:
+#             fcntl.fcntl(lf, fcntl.LOCK_UN)
+
 def write_output(
         spec_id: int, script_id: int, wave: np.ndarray, flux: np.ndarray, err: np.ndarray,
         fixed_parameters: dict[str, float], measurements: dict[str, float]
@@ -13,42 +56,38 @@ def write_output(
     root = get_root_path()
     data_dir = os.path.join(root, 'output/data')
     os.makedirs(data_dir, exist_ok=True)
-    
+
     filename = 'data.h5'
-
     filepath = os.path.join(data_dir, filename)
-
     lockfile = filepath + ".lock"
 
     with open(lockfile, 'w') as lf:
-        fcntl.fcntl(lf, fcntl.LOCK_EX)
-
+        fcntl.flock(lf, fcntl.LOCK_EX)   # fcntl.fcntl() was a no-op lock; flock() actually blocks
         try:
             with h5py.File(filepath, 'a') as f:
-                group = f.require_group(str(script_id))
-                #subgroup = group.create_group(str(script_id))
-                group.create_dataset('spec_id', data = spec_id)
+                script_group = f.require_group(str(script_id))
+                # one subgroup per spectrum, so repeated calls for the same
+                # script_id don't collide on 'wave'/'flux'/'err'
+                spec_group = script_group.require_group(str(spec_id))
 
-                group.create_dataset('wave', data=wave)
-                group.create_dataset('flux', data=flux)
-                group.create_dataset('err', data=err)
-                # subgroup.create_dataset('wave', data=wave)
-                # subgroup.create_dataset('flux', data=flux)
-                # subgroup.create_dataset('err', data=err)
+                _write_dataset(spec_group, 'spec_id', spec_id)
+                _write_dataset(spec_group, 'wave', wave)
+                _write_dataset(spec_group, 'flux', flux)
+                _write_dataset(spec_group, 'err', err)
+
                 for key, param in fixed_parameters.items():
-                    group.create_dataset(key, data=param)
-                # params_group = subgroup.create_group("parameters")
-                # for key, param in fixed_parameters.items():
-                #     params_group.create_dataset(key, data=param)
+                    _write_dataset(spec_group, key, param)
+
                 for key, val in measurements.items():
-                    group.create_dataset(key, data=val)
-                # measurement_group = subgroup.create_group("measurements")
-                # for key, val in measurements.items():
-                #     measurement_group.create_dataset(key, data=val)
-
+                    _write_dataset(spec_group, key, val)
         finally:
-            fcntl.fcntl(lf, fcntl.LOCK_UN)
-
+            fcntl.flock(lf, fcntl.LOCK_UN)
+            
+def _write_dataset(group, key, data):
+    """Create a dataset, overwriting if it already exists (idempotent on retries)."""
+    if key in group:
+        del group[key]
+    group.create_dataset(key, data=data)
 
 def load_spec(spec_id: int) -> dict:
     root = get_root_path()
