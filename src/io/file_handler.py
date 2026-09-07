@@ -14,9 +14,8 @@ def write_output(
     data_dir = os.path.join(root, 'output/data')
     os.makedirs(data_dir, exist_ok=True)
     
-    files = glob(os.path.join(data_dir, 'data*.h5'))
-    filename = 'data.h5' if len(files) == 0 else f'data_{len(files)}.h5'
-    
+    filename = 'data.h5'
+
     filepath = os.path.join(data_dir, filename)
 
     lockfile = filepath + ".lock"
